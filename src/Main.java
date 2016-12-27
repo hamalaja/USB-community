@@ -1,5 +1,6 @@
 import java.nio.ByteBuffer;
 
+import org.apache.commons.lang3.StringUtils;
 import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
@@ -8,114 +9,95 @@ import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
 
+/**
+ * https://github.com/usb4java/usb4java-examples/blob/master/src/main/java/org/
+ * usb4java/examples/AsyncBulkTransfer.java
+ * 
+ * http://usb4java.org/quickstart/libusb.html
+ * http://masters.donntu.org/2013/fknt/hryhoriev/library/java_usb.pdf
+ * 
+ * @author lamhm
+ *
+ */
 public class Main {
+	private static final String HARDWARE_IDS = "VID_0BB4&PID_0C97";
+
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
 		Context context = new Context();
 		int result = LibUsb.init(context);
-		
 		if (result != LibUsb.SUCCESS) {
 			throw new LibUsbException("Unable to initialize libusb.", result);
 		}
-		
-		
-		DeviceList list = null;
-		
+
+		String[] resolutionIds = resolutionHardwareIds(HARDWARE_IDS);
+		DeviceList devices = null;
 		try {
-			
-			list = findDevices();
+			devices = findDevices();
 			int timeout = 1000;
-			
-			for(Device device : list) {
-				
+			System.out.println("[ERROR] size:" + devices.getSize());
+
+			for (Device device : devices) {
 				DeviceDescriptor descriptor = new DeviceDescriptor();
+				result = LibUsb.getDeviceDescriptor(device, descriptor);
+				if (result != LibUsb.SUCCESS) {
+					continue;
+				}
+
 				int address = LibUsb.getDeviceAddress(device);
-                int busNumber = LibUsb.getBusNumber(device);
-				
-	            result = LibUsb.getDeviceDescriptor(device, descriptor);
-	            if (result != LibUsb.SUCCESS) {
-	            	continue;
-	            }	            
-                System.out.format(
-                    "Bus %03d, Device %03d: Vendor %04x, Product %04x%n",
-                    busNumber, address, descriptor.idVendor(), descriptor.idProduct());               
-				
+				int busNumber = LibUsb.getBusNumber(device);
+				String vendorId = String.format("%04x", descriptor.idVendor());
+				String productId = String.format("%04x", descriptor.idProduct());
+				System.out.format("Bus %03d, Device %03d: Vendor %s, Product %s%n", busNumber, address, vendorId, productId);
+				if (resolutionIds[0].equals(vendorId) && resolutionIds[1].equals(productId)) {
+					System.out.println("[FATAL] ----------------------> HTC");
+				}
+
 				DeviceHandle handle = new DeviceHandle();
 				result = LibUsb.open(device, handle);
 				if (result != LibUsb.SUCCESS) {
-	            	continue;
-	            }
-				
-				try
-				{
+					continue;
+				}
+
+				try {
 					ByteBuffer buffer = ByteBuffer.allocateDirect(8);
 					buffer.put(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 });
-					int transfered = LibUsb.controlTransfer(handle, 
-					    (byte) (LibUsb.REQUEST_TYPE_CLASS | LibUsb.RECIPIENT_INTERFACE),
-					    (byte) 0x09, (short) 2, (short) 1, buffer, timeout);
+					int transfered = LibUsb.controlTransfer(handle, (byte) (LibUsb.REQUEST_TYPE_CLASS | LibUsb.RECIPIENT_INTERFACE), (byte) 0x09, (short) 2,
+							(short) 1, buffer, timeout);
 					if (transfered < 0) {
-						System.out.println("Control transfer failed: " + transfered);	
+						System.out.println("[ERROR] Control transfer failed: " + transfered);
 					}
-					
-					System.out.println("product id: " + descriptor.idProduct() + " , " + transfered + " bytes sent");
+
+					System.out.println("[INFO] product id: " + descriptor.idProduct() + "[int] , " + transfered + " bytes sent");
+				} finally {
+					LibUsb.close(handle);
 				}
-				finally
-				{
-				    LibUsb.close(handle);
-				}
-				
 			}
-			
+
 		} finally {
-			if(list != null) {
-				LibUsb.freeDeviceList(list, true);
-			}			
-			LibUsb.exit(context);			
+			if (devices != null) {
+				LibUsb.freeDeviceList(devices, true);
+			}
+			LibUsb.exit(context);
 		}
-	
-		
-	}
-	
-	
-	public static Device findDevice(short vendorId, short productId)
-	{
-	    // Read the USB device list
-	    DeviceList list = new DeviceList();
-	    int result = LibUsb.getDeviceList(null, list);
-	    if (result < 0) throw new LibUsbException("Unable to get device list", result);
 
-	    try
-	    {
-	        // Iterate over all devices and scan for the right one
-	        for (Device device: list)
-	        {
-	            DeviceDescriptor descriptor = new DeviceDescriptor();
-	            result = LibUsb.getDeviceDescriptor(device, descriptor);
-	            if (result != LibUsb.SUCCESS) throw new LibUsbException("Unable to read device descriptor", result);
-	            if (descriptor.idVendor() == vendorId && descriptor.idProduct() == productId) return device;
-	        }
-	    }
-	    finally
-	    {
-	        // Ensure the allocated device list is freed
-	        LibUsb.freeDeviceList(list, true);
-	    }
-
-	    // Device not found
-	    return null;
 	}
-	
-	
-	public static DeviceList findDevices()
-	{
-	    // Read the USB device list
-	    DeviceList list = new DeviceList();
-	    int result = LibUsb.getDeviceList(null, list);
-	    if (result < 0) throw new LibUsbException("Unable to get device list", result);
-	   
-	    return list;
+
+
+	public static DeviceList findDevices() {
+		// Read the USB device list
+		DeviceList list = new DeviceList();
+		int result = LibUsb.getDeviceList(null, list);
+		if (result < 0)
+			throw new LibUsbException("Unable to get device list", result);
+
+		return list;
+	}
+
+
+	public static String[] resolutionHardwareIds(String value) {
+		String[] items = StringUtils.split(value, "&");
+		return new String[] { items[0].replace("VID_", "").toLowerCase(), items[1].replace("PID_", "").toLowerCase() };
 	}
 
 }
