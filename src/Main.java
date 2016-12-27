@@ -16,6 +16,9 @@ import org.usb4java.LibUsbException;
  * http://usb4java.org/quickstart/libusb.html
  * http://masters.donntu.org/2013/fknt/hryhoriev/library/java_usb.pdf
  * 
+ * http://www.mets-blog.com/java-usb-communication-usb4java/
+ * http://zadig.akeo.ie/
+ * 
  * @author lamhm
  *
  */
@@ -35,7 +38,7 @@ public class Main {
 		try {
 			devices = findDevices();
 			int timeout = 1000;
-			System.out.println("[ERROR] size:" + devices.getSize());
+			System.out.println("[INFO] size:" + devices.getSize());
 
 			for (Device device : devices) {
 				DeviceDescriptor descriptor = new DeviceDescriptor();
@@ -44,18 +47,21 @@ public class Main {
 					continue;
 				}
 
-				int address = LibUsb.getDeviceAddress(device);
-				int busNumber = LibUsb.getBusNumber(device);
 				String vendorId = String.format("%04x", descriptor.idVendor());
 				String productId = String.format("%04x", descriptor.idProduct());
-				System.out.format("Bus %03d, Device %03d: Vendor %s, Product %s%n", busNumber, address, vendorId, productId);
-				if (resolutionIds[0].equals(vendorId) && resolutionIds[1].equals(productId)) {
-					System.out.println("[FATAL] ----------------------> HTC");
+				if (!resolutionIds[0].equals(vendorId) || !resolutionIds[1].equals(productId)) {
+					continue;
 				}
+
+				int address = LibUsb.getDeviceAddress(device);
+				int busNumber = LibUsb.getBusNumber(device);
+				System.out.println(descriptor.dump());
+				System.out.format("Bus %03d, Device %03d: Vendor %s, Product %s%n", busNumber, address, vendorId, productId);
 
 				DeviceHandle handle = new DeviceHandle();
 				result = LibUsb.open(device, handle);
 				if (result != LibUsb.SUCCESS) {
+					System.out.println("[ERROR] Unable to open USB device" + result);
 					continue;
 				}
 
