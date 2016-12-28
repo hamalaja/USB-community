@@ -1,3 +1,4 @@
+package vn.hamalaja.usbcommunity;
 import java.nio.ByteBuffer;
 
 import org.apache.commons.lang3.StringUtils;
