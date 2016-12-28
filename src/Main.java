@@ -18,12 +18,13 @@ import org.usb4java.LibUsbException;
  * 
  * http://www.mets-blog.com/java-usb-communication-usb4java/
  * http://zadig.akeo.ie/
+ * Gap loi -9 va da fix http://stackoverflow.com/questions/17354891/java-bytebuffer-to-string
  * 
  * @author lamhm
  *
  */
 public class Main {
-	private static final String HARDWARE_IDS = "VID_0BB4&PID_0C97";
+	private static final String HARDWARE_IDS = "VID_13FE&PID_3600";
 
 
 	public static void main(String[] args) {
@@ -68,13 +69,16 @@ public class Main {
 				try {
 					ByteBuffer buffer = ByteBuffer.allocateDirect(8);
 					buffer.put(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 });
-					int transfered = LibUsb.controlTransfer(handle, (byte) (LibUsb.REQUEST_TYPE_CLASS | LibUsb.RECIPIENT_INTERFACE), (byte) 0x09, (short) 2,
-							(short) 1, buffer, timeout);
+
+					int transfered = LibUsb.controlTransfer(handle, LibUsb.ENDPOINT_IN, LibUsb.REQUEST_GET_DESCRIPTOR, (short) 0x0100, (short) 0x0000, buffer,
+							timeout);
 					if (transfered < 0) {
 						System.out.println("[ERROR] Control transfer failed: " + transfered);
 					}
 
 					System.out.println("[INFO] product id: " + descriptor.idProduct() + "[int] , " + transfered + " bytes sent");
+				} catch (Exception e) {
+					e.printStackTrace();
 				} finally {
 					LibUsb.close(handle);
 				}

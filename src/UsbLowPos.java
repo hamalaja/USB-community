@@ -38,7 +38,7 @@ public class UsbLowPos {
 	public static void main(String[] args) {
 
 		UsbLowPos upos = new UsbLowPos();
-		upos.claimDevice((short) (0x0bb4), (short) (0x0c97));
+		upos.claimDevice((short) (0x13fe), (short) (0x3600));
 
 		char[] initEP = new char[] { 0x1b, '@' };
 		char[] cutP = new char[] { 0x1d, 'V', 1 };
@@ -154,7 +154,7 @@ public class UsbLowPos {
 		int result = LibUsb.bulkTransfer(handle, endpoint, buffer, transfered, 3000);
 
 		if (result != LibUsb.SUCCESS) {
-			System.out.println("EXCEPTION THROWN");
+			System.out.println("EXCEPTION THROWN: errorCode=" + result);
 			return false;
 		}
 
